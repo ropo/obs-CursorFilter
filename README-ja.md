@@ -8,7 +8,7 @@ Windows 版 OBS Studio 33 向けです。
 
 ## インストール
 
-OBS を終了し、`obs-cursor-filter` フォルダーを `C:\ProgramData\obs-studio\plugins` に配置してから OBS を起動します。フォルダーには `obs-cursor-filter.dll` と `data\locale` が必要です。
+OBS を終了し、`obs-cursor-filter` フォルダーを `C:\ProgramData\obs-studio\plugins` に配置してから OBS を起動します。フォルダーには `obs-cursor-filter.dll`、`data\manifest.json`、`data\locale` が必要です。
 
 ポータブル版 OBS の場合は、ポータブル版のフォルダー内にある `plugins` に配置してください。
 
@@ -25,4 +25,4 @@ OBS を終了し、`obs-cursor-filter` フォルダーを `C:\ProgramData\obs-st
 
 ## ライセンス
 
-GPL-2.0-or-later。[COPYING](COPYING) を参照してください。
+作者：@ropotama。GPL-2.0-or-later。[COPYING](COPYING) を参照してください。カーソル取得コードには、同じく GPL-2.0-or-later で公開されている [OBS Studio](https://github.com/obsproject/obs-studio) のコードを利用しています。

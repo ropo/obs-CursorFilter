@@ -1,0 +1,7 @@
+{
+  "id": "obs-cursor-filter",
+  "display_name": "OBS Cursor Filter",
+  "name": "obs-cursor-filter",
+  "version": "0.1.0",
+  "description": "Draws the Windows mouse cursor over a Game Capture source."
+}

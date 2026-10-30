@@ -8,7 +8,7 @@ Requires OBS Studio 33 on Windows.
 
 ## Installation
 
-With OBS closed, place the `obs-cursor-filter` plugin folder in `C:\ProgramData\obs-studio\plugins`. The folder must contain `obs-cursor-filter.dll` and `data\locale`. Start OBS after installation.
+With OBS closed, place the `obs-cursor-filter` plugin folder in `C:\ProgramData\obs-studio\plugins`. The folder must contain `obs-cursor-filter.dll`, `data\manifest.json`, and `data\locale`. Start OBS after installation.
 
 For portable OBS, place the folder in the `plugins` folder inside the portable OBS directory instead.
 
@@ -25,4 +25,4 @@ The filter assumes the captured image covers the window's entire client area. So
 
 ## License
 
-GPL-2.0-or-later. See [COPYING](COPYING).
+Author: @ropotama. GPL-2.0-or-later; see [COPYING](COPYING). Cursor capture code is adapted from [OBS Studio](https://github.com/obsproject/obs-studio), which is also licensed under GPL-2.0-or-later.

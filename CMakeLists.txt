@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(obs_cursor_filter VERSION 0.1.0 LANGUAGES C CXX)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/data/manifest.json" PLUGIN_MANIFEST)
+string(JSON PLUGIN_VERSION GET "${PLUGIN_MANIFEST}" version)
+project(obs_cursor_filter VERSION ${PLUGIN_VERSION} LANGUAGES C CXX)
 
 set(OBS_SOURCE_DIR "" CACHE PATH "OBS Studio ソースのパス")
 set(OBS_BUILD_DIR "" CACHE PATH "OBS Studio ビルドのパス")

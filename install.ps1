@@ -22,6 +22,14 @@ $localeSource = $localeCandidates | Where-Object { Test-Path -LiteralPath (Join-
 if (-not $localeSource) {
     throw 'ロケールファイルが見つかりません。data\locale または out を確認してください。'
 }
+$manifestCandidates = @(
+    (Join-Path $PSScriptRoot 'data\manifest.json'),
+    (Join-Path $PSScriptRoot 'out\obs-cursor-filter\data\manifest.json')
+)
+$manifestSource = $manifestCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+if (-not $manifestSource) {
+    throw 'マニフェストが見つかりません。data\manifest.json または out を確認してください。'
+}
 
 $destination = Join-Path $PluginRoot $name
 $target = Join-Path $destination "$name.dll"
@@ -32,6 +40,7 @@ if ($PSCmdlet.ShouldProcess($target, "インストール: $source")) {
         $localeDestination = Join-Path $destination 'data\locale'
         New-Item -ItemType Directory -Force -Path $localeDestination | Out-Null
         Get-ChildItem -LiteralPath $localeSource -Filter '*.ini' -File | Copy-Item -Destination $localeDestination -Force
+        Copy-Item -LiteralPath $manifestSource -Destination (Join-Path $destination 'data\manifest.json') -Force
         Write-Host "インストールしました: $target"
         Write-Host 'OBS を再起動してください。実行中は先に終了してからインストールしてください。'
     } catch {
