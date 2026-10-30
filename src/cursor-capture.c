@@ -1,5 +1,6 @@
 /* OBS Studio 33.0.0 win-capture 由来。GPL-2.0-or-later。 */
 #include <windows.h>
+#include <limits.h>
 #include <obs.h>
 #include "cursor-capture.h"
 #include "cur-file.h"
@@ -8,13 +9,18 @@ static uint8_t *get_bitmap_data(HBITMAP hbmp, BITMAP *bmp)
 {
 	if (GetObject(hbmp, sizeof(*bmp), bmp) != 0) {
 		uint8_t *output;
-		unsigned int size = bmp->bmHeight * bmp->bmWidthBytes;
-		if (!size) {
+		if (bmp->bmHeight <= 0 || bmp->bmWidth <= 0 || bmp->bmWidthBytes <= 0)
+			return NULL;
+		uint64_t size = (uint64_t)bmp->bmHeight * bmp->bmWidthBytes;
+		if (size > LONG_MAX) {
 			return NULL;
 		}
 
-		output = bmalloc(size);
-		GetBitmapBits(hbmp, size, output);
+		output = bmalloc((size_t)size);
+		if (GetBitmapBits(hbmp, (LONG)size, output) != (LONG)size) {
+			bfree(output);
+			return NULL;
+		}
 		return output;
 	}
 
@@ -46,12 +52,10 @@ static inline bool bitmap_has_alpha(uint8_t *data, long num_pixels)
 
 static inline void apply_mask(uint8_t *color, uint8_t *mask, BITMAP *bmp_mask)
 {
-	long mask_pix_offs;
-
 	for (long y = 0; y < bmp_mask->bmHeight; y++) {
 		for (long x = 0; x < bmp_mask->bmWidth; x++) {
-			mask_pix_offs = y * (bmp_mask->bmWidthBytes * 8) + x;
-			color[(y * bmp_mask->bmWidth + x) * 4 + 3] = bit_to_alpha(mask, mask_pix_offs, false);
+			color[(y * bmp_mask->bmWidth + x) * 4 + 3] =
+				bit_to_alpha(mask + y * bmp_mask->bmWidthBytes, x, false);
 		}
 	}
 }
@@ -63,23 +67,38 @@ static inline uint8_t *copy_from_color(ICONINFO *ii, uint32_t *width, uint32_t *
 	uint8_t *color;
 	uint8_t *mask;
 
-	color = get_bitmap_data(ii->hbmColor, &bmp_color);
-	if (!color) {
+	if (!GetObject(ii->hbmColor, sizeof(bmp_color), &bmp_color) ||
+	    bmp_color.bmWidth <= 0 || bmp_color.bmHeight <= 0 ||
+	    (uint64_t)bmp_color.bmWidth * bmp_color.bmHeight > LONG_MAX / 4) {
 		return NULL;
 	}
 
-	if (bmp_color.bmBitsPixel < 32) {
+	/* 低色数の画像も、上下方向と行幅をそろえた32bit BGRAへ変換する。 */
+	BITMAPINFO info = {0};
+	info.bmiHeader.biSize = sizeof(info.bmiHeader);
+	info.bmiHeader.biWidth = bmp_color.bmWidth;
+	info.bmiHeader.biHeight = -bmp_color.bmHeight;
+	info.bmiHeader.biPlanes = 1;
+	info.bmiHeader.biBitCount = 32;
+	color = bzalloc((size_t)bmp_color.bmWidth * bmp_color.bmHeight * 4);
+	HDC dc = GetDC(NULL);
+	int rows = dc ? GetDIBits(dc, ii->hbmColor, 0, (UINT)bmp_color.bmHeight, color, &info, DIB_RGB_COLORS) : 0;
+	if (dc) ReleaseDC(NULL, dc);
+	if (rows != bmp_color.bmHeight) {
 		bfree(color);
 		return NULL;
 	}
 
-	mask = get_bitmap_data(ii->hbmMask, &bmp_mask);
-	if (mask) {
-		long pixels = bmp_color.bmHeight * bmp_color.bmWidth;
-
-		if (!bitmap_has_alpha(color, pixels))
-			apply_mask(color, mask, &bmp_mask);
-
+	long pixels = bmp_color.bmHeight * bmp_color.bmWidth;
+	if (bmp_color.bmBitsPixel < 32 || !bitmap_has_alpha(color, pixels)) {
+		mask = get_bitmap_data(ii->hbmMask, &bmp_mask);
+		if (!mask || bmp_mask.bmBitsPixel != 1 || bmp_mask.bmPlanes != 1 ||
+		    bmp_mask.bmWidth != bmp_color.bmWidth || bmp_mask.bmHeight != bmp_color.bmHeight) {
+			bfree(mask);
+			bfree(color);
+			return NULL;
+		}
+		apply_mask(color, mask, &bmp_mask);
 		bfree(mask);
 	}
 
@@ -101,6 +120,11 @@ static inline uint8_t *copy_from_mask(ICONINFO *ii, uint32_t *width, uint32_t *h
 		return NULL;
 	}
 
+	if (bmp.bmBitsPixel != 1 || bmp.bmPlanes != 1 || bmp.bmHeight % 2 != 0 ||
+	    (uint64_t)bmp.bmWidth * (bmp.bmHeight / 2) > LONG_MAX / 4) {
+		bfree(mask);
+		return NULL;
+	}
 	bmp.bmHeight /= 2;
 
 	pixels = bmp.bmHeight * bmp.bmWidth;
@@ -113,8 +137,9 @@ static inline uint8_t *copy_from_mask(ICONINFO *ii, uint32_t *width, uint32_t *h
 	bottom = bmp.bmWidthBytes * bmp.bmHeight;
 
 	for (long i = 0; i < pixels; i++) {
-		uint8_t andMask = bit_to_alpha(mask, i, true);
-		uint8_t xorMask = bit_to_alpha(mask + bottom, i, true);
+		long x = i % bmp.bmWidth, y = i / bmp.bmWidth;
+		uint8_t andMask = bit_to_alpha(mask + y * bmp.bmWidthBytes, x, true);
+		uint8_t xorMask = bit_to_alpha(mask + bottom + y * bmp.bmWidthBytes, x, true);
 
 		if (!andMask) {
 			// black in the AND mask
@@ -136,15 +161,8 @@ static inline uint8_t *copy_from_mask(ICONINFO *ii, uint32_t *width, uint32_t *h
 
 static inline uint8_t *cursor_capture_icon_bitmap(ICONINFO *ii, uint32_t *width, uint32_t *height, bool *monochrome)
 {
-	uint8_t *output;
-	*monochrome = false;
-	output = copy_from_color(ii, width, height);
-	if (!output) {
-		*monochrome = true;
-		output = copy_from_mask(ii, width, height);
-	}
-
-	return output;
+	*monochrome = ii->hbmColor == NULL;
+	return *monochrome ? copy_from_mask(ii, width, height) : copy_from_color(ii, width, height);
 }
 
 static gs_texture_t *get_cached_texture(struct cursor_data *data, uint32_t cx, uint32_t cy)
@@ -159,6 +177,8 @@ static gs_texture_t *get_cached_texture(struct cursor_data *data, uint32_t cx, u
 	}
 
 	cc.texture = gs_texture_create(cx, cy, GS_BGRA, 1, NULL, GS_DYNAMIC);
+	if (!cc.texture)
+		return NULL;
 	cc.cx = cx;
 	cc.cy = cy;
 	da_push_back(data->cached_textures, &cc);
@@ -182,7 +202,7 @@ static inline bool cursor_capture_icon(struct cursor_data *data, HICON icon)
 	bitmap = cursor_capture_icon_bitmap(&ii, &width, &height, &data->monochrome);
 	bool success = false;
 	if (bitmap) {
-		if (data->last_cx != width || data->last_cy != height) {
+		if (!data->texture || data->last_cx != width || data->last_cy != height) {
 			data->texture = get_cached_texture(data, width, height);
 			data->last_cx = width;
 			data->last_cy = height;
@@ -239,7 +259,7 @@ static bool cursor_capture_file(struct cursor_data *data, const wchar_t *path, u
 	uint32_t width, height, hot_x, hot_y;
 	if (!load_cur_file(path, target_size, &pixels, &width, &height, &hot_x, &hot_y))
 		return false;
-	if (data->last_cx != width || data->last_cy != height) {
+	if (!data->texture || data->last_cx != width || data->last_cy != height) {
 		data->texture = get_cached_texture(data, width, height);
 		data->last_cx = width;
 		data->last_cy = height;
