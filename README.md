@@ -1,43 +1,28 @@
 # OBS Cursor Filter
 
-Windows 11 の OBS Studio 33 向けの、ゲームキャプチャにカーソルを重ねるエフェクトフィルターです。OBS 本体の変更は不要です。
+English | [日本語](README-ja.md)
 
-## 使い方
+An OBS Studio effect filter for Windows that draws the Windows mouse cursor over a Game Capture source. It follows the Windows pointer size setting and can use a configured `.cur` file to preserve the detail of custom cursors.
 
-1. ゲームキャプチャの「カーソルをキャプチャする」をオフにします。
-2. ゲームキャプチャの「フィルタ」→「エフェクトフィルタ」に「カーソル描画」を追加します。
-3. ゲームキャプチャを「特定のウィンドウをキャプチャ」に設定すると、フィルターはその対象を使用します。必要に応じて「サイズの微調整」を使います。
-4. ゲーム上のカーソルが録画・配信の映像でも同じ位置と大きさになるか確認します。
+Requires OBS Studio 33 on Windows.
 
-自動対象はゲームキャプチャの設定にあるタイトル・クラス・実行ファイルの完全一致で探します。キャプチャ中のウィンドウそのものを取得する仕組みではないため、タイトルが変化するゲームや一致優先順位の設定によっては対象を見つけられません。全画面自動検出などでは「ゲームキャプチャの対象ウィンドウを使用」をオフにして手動指定してください。手動一覧はフィルタのプロパティを開いたときに更新され、OBS 自身のウィンドウは対象外です。
+## Installation
 
-## 現在の制限
+With OBS closed, place the `obs-cursor-filter` plugin folder in `C:\ProgramData\obs-studio\plugins`. The folder must contain `obs-cursor-filter.dll` and `data\locale`. Start OBS after installation.
 
-- Windows のカーソルサイズ設定とモニターの DPI を使って描画サイズを推定します。標準カーソルに設定された `.cur` は元ファイルから読み込みます。それ以外やファイルを読み込めない場合は取得画像を拡大するため、特殊なカーソルでは表示が異なる場合や輪郭がぼける場合があります。
-- 選択ウィンドウのクライアント領域全体がゲームキャプチャの映像に対応する前提です。描画範囲が異なるゲーム、特殊な全画面モード、DPI や異なる解像度では位置がずれる場合があります。
-- ゲーム自身が映像内に描くカーソルを消すことはできません。
-- 通常の SDR 映像を対象とした試作です。HDR、ゲーム内カーソル、異なる DPI の複数モニターは未検証です。
+For portable OBS, place the folder in the `plugins` folder inside the portable OBS directory instead.
 
-## ビルド
+## Usage
 
-Visual Studio 2026 の C++ 開発環境、CMake、OBS Studio 33 のソースと Release ビルド済みの libobs が必要です。
+1. Turn off **Capture Cursor** in your Game Capture source.
+2. Open the source's **Filters** and add **Cursor Capture** under Effect Filters.
+3. If Game Capture is set to capture a specific window, the filter uses that window by default. Otherwise, turn off **Use the Game Capture window** and select a window manually.
+4. Check the cursor's position and size in the OBS preview. Adjust **Size adjustment** if needed; `1.0` follows the Windows size setting.
 
-```powershell
-cmake -S . -B build -G 'Visual Studio 18 2026' -A x64 -DOBS_SOURCE_DIR=C:/path/to/obs-studio -DOBS_BUILD_DIR=C:/path/to/obs-studio/build_x64
-cmake --build build --config Release
-cmake --install build --config Release --prefix out
-```
+Automatic window selection matches the configured title, class, and executable. If the game changes its window title or OBS matches it differently, select the window manually. The filter can show the cursor only while the selected window is active.
 
-## インストール
+The filter assumes the captured image covers the window's entire client area. Some fullscreen modes, display scaling, or different game resolutions may cause a position mismatch. Cursors drawn inside the game image cannot be removed by this filter. HDR and multiple monitors with different DPI settings have not been verified.
 
-OBS を終了して、プロジェクトフォルダーで以下を実行します。書き込みを拒否された場合は、PowerShell を管理者として開いて実行してください。
+## License
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
-```
-
-DLL は `C:\ProgramData\obs-studio\plugins\obs-cursor-filter\obs-cursor-filter.dll` に配置されます。Release ビルドがあればそれを優先し、なければ `out` 内の DLL を使用します。OBS を再起動してフィルターを追加してください。ポータブル版 OBS は ProgramData のプラグインを読み込まないため、ポータブル版のルートにある `plugins` フォルダーを `-PluginRoot` で指定してください。
-
-## ライセンス
-
-GPL-2.0-or-later。`src/cursor-capture.c` と `src/cursor-capture.h` は OBS Studio の `plugins/win-capture` に由来します。詳細は `COPYING` を参照してください。
+GPL-2.0-or-later. See [COPYING](COPYING).

@@ -6,7 +6,8 @@
 #include "cursor-capture.h"
 
 OBS_DECLARE_MODULE()
-MODULE_EXPORT const char *obs_module_description(void) { return "ゲームキャプチャ用カーソル描画フィルター"; }
+OBS_MODULE_USE_DEFAULT_LOCALE("obs-cursor-filter", "en-US")
+MODULE_EXPORT const char *obs_module_description(void) { return obs_module_text("Description"); }
 
 struct filter_data {
 	obs_source_t *source;
@@ -70,7 +71,7 @@ static BOOL CALLBACK add_window(HWND hwnd, LPARAM param)
 	return TRUE;
 }
 
-static const char *filter_name(void *unused) { UNUSED_PARAMETER(unused); return "カーソル描画"; }
+static const char *filter_name(void *unused) { UNUSED_PARAMETER(unused); return obs_module_text("CursorFilter"); }
 static void filter_update(void *data, obs_data_t *settings)
 {
 	struct filter_data *f = data;
@@ -107,12 +108,12 @@ static obs_properties_t *filter_properties(void *data)
 {
 	UNUSED_PARAMETER(data);
 	obs_properties_t *p = obs_properties_create();
-	obs_properties_add_bool(p, "use_source_window", "ゲームキャプチャの対象ウィンドウを使用");
-	obs_property_t *window = obs_properties_add_list(p, "window", "対象ウィンドウ（手動指定時）", OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(window, "選択してください", "");
+	obs_properties_add_bool(p, "use_source_window", obs_module_text("UseSourceWindow"));
+	obs_property_t *window = obs_properties_add_list(p, "window", obs_module_text("Window"), OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
+	obs_property_list_add_string(window, obs_module_text("SelectWindow"), "");
 	EnumWindows(add_window, (LPARAM)window);
-	obs_properties_add_float_slider(p, "scale_adjust", "サイズの微調整（OS設定に対する倍率）", 0.5, 4.0, 0.1);
-	obs_properties_add_bool(p, "foreground_only", "対象がアクティブなときのみ表示");
+	obs_properties_add_float_slider(p, "scale_adjust", obs_module_text("ScaleAdjust"), 0.5, 4.0, 0.1);
+	obs_properties_add_bool(p, "foreground_only", obs_module_text("ForegroundOnly"));
 	return p;
 }
 static HWND resolve_window(struct filter_data *f)

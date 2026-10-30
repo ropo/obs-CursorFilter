@@ -14,6 +14,14 @@ $source = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf 
 if (-not $source) {
     throw 'DLL が見つかりません。先に Release ビルドを実行してください。'
 }
+$localeCandidates = @(
+    (Join-Path $PSScriptRoot 'data\locale'),
+    (Join-Path $PSScriptRoot 'out\obs-cursor-filter\data\locale')
+)
+$localeSource = $localeCandidates | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'en-US.ini') -PathType Leaf } | Select-Object -First 1
+if (-not $localeSource) {
+    throw 'ロケールファイルが見つかりません。data\locale または out を確認してください。'
+}
 
 $destination = Join-Path $PluginRoot $name
 $target = Join-Path $destination "$name.dll"
@@ -21,6 +29,9 @@ if ($PSCmdlet.ShouldProcess($target, "インストール: $source")) {
     try {
         New-Item -ItemType Directory -Force -Path $destination | Out-Null
         Copy-Item -LiteralPath $source -Destination $target -Force
+        $localeDestination = Join-Path $destination 'data\locale'
+        New-Item -ItemType Directory -Force -Path $localeDestination | Out-Null
+        Get-ChildItem -LiteralPath $localeSource -Filter '*.ini' -File | Copy-Item -Destination $localeDestination -Force
         Write-Host "インストールしました: $target"
         Write-Host 'OBS を再起動してください。実行中は先に終了してからインストールしてください。'
     } catch {

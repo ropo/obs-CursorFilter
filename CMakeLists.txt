@@ -17,6 +17,7 @@ target_include_directories(obs-cursor-filter PRIVATE "${OBS_SOURCE_DIR}/libobs" 
 target_link_libraries(obs-cursor-filter PRIVATE "${OBS_BUILD_DIR}/libobs/Release/obs.lib" user32 gdi32 advapi32 shcore windowscodecs ole32 shlwapi)
 set_target_properties(obs-cursor-filter PROPERTIES PREFIX "")
 install(TARGETS obs-cursor-filter RUNTIME DESTINATION obs-cursor-filter LIBRARY DESTINATION obs-cursor-filter)
+install(DIRECTORY data/ DESTINATION obs-cursor-filter/data)
 
 option(CURSOR_FILTER_BUILD_TESTS "回帰テストをビルドする" OFF)
 if(CURSOR_FILTER_BUILD_TESTS)
